@@ -7,6 +7,8 @@ Version.java
 .cproject
 .project
 .classpath
+.idea/
+.cmake/
 .DS_Store
 *.pyc
 modules/.*
