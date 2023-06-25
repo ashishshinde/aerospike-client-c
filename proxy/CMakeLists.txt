@@ -3,6 +3,7 @@ cmake_minimum_required(VERSION 3.8)
 project(aerospike-proxy-client-c C CXX)
 
 include(cmake/common.cmake)
+set(CMAKE_BUILD_TYPE Debug)
 
 # Create the build folder
 add_custom_target(build-time-make-directory ALL
@@ -20,14 +21,14 @@ set(kvs_proto_hdrs "build/kvs.pb.h")
 set(kvs_grpc_srcs "build/kvs.grpc.pb.cc")
 set(kvs_grpc_hdrs "build/kvs.grpc.pb.h")
 add_custom_command(
-      OUTPUT "${kvs_proto_srcs}" "${kvs_proto_hdrs}" "${kvs_grpc_srcs}" "${kvs_grpc_hdrs}"
-      COMMAND ${_PROTOBUF_PROTOC}
-      ARGS --grpc_out "build"
+        OUTPUT "${kvs_proto_srcs}" "${kvs_proto_hdrs}" "${kvs_grpc_srcs}" "${kvs_grpc_hdrs}"
+        COMMAND ${_PROTOBUF_PROTOC}
+        ARGS --grpc_out "build"
         --cpp_out "build"
         -I "${kvs_proto_path}"
         --plugin=protoc-gen-grpc="${_GRPC_CPP_PLUGIN_EXECUTABLE}"
         "${kvs_proto}"
-      DEPENDS "${kvs_proto}")
+        DEPENDS "${kvs_proto}")
 
 # Generated sources
 set(auth_proto_srcs "build/auth.pb.cc")
@@ -46,46 +47,42 @@ add_custom_command(
 
 
 # Include generated *.pb.h files
-include_directories("build" "../src/include")
+include_directories("build" "src/include" "modules/jwt-cpp/include" "../src/include" "../modules/common/src/include" "../modules/mod-lua/src/include")
+
+# Proxy sources
+file(GLOB proxy_srcs "src/main/aerospike/*.c" "src/main/aerospike/*.cc")
+file(GLOB proxy_hdrs "src/include/aerospike/*.h")
 
 # kvs_grpc_proto
-add_library(kvs_grpc_proto
-  ${kvs_grpc_srcs}
-  ${kvs_grpc_hdrs}
-  ${kvs_proto_srcs}
-  ${kvs_proto_hdrs})
-target_link_libraries(kvs_grpc_proto
-  ${_REFLECTION}
-  ${_GRPC_GRPCPP}
-  ${_PROTOBUF_LIBPROTOBUF})
-# Put build artifacts in build directory
-set_target_properties(kvs_grpc_proto PROPERTIES
-        ARCHIVE_OUTPUT_DIRECTORY "build"
-        )
-
-
-# auth_grpc_proto
-add_library(auth_grpc_proto
+add_library(aerospike_proxy
+        ${kvs_grpc_srcs}
+        ${kvs_grpc_hdrs}
+        ${kvs_proto_srcs}
+        ${kvs_proto_hdrs}
         ${auth_grpc_srcs}
         ${auth_grpc_hdrs}
         ${auth_proto_srcs}
-        ${auth_proto_hdrs})
-target_link_libraries(auth_grpc_proto
+        ${auth_proto_hdrs}
+        ${proxy_srcs}
+        ${proxy_hdrs}
+        )
+
+target_link_libraries(aerospike_proxy
         ${_REFLECTION}
         ${_GRPC_GRPCPP}
         ${_PROTOBUF_LIBPROTOBUF})
 # Put build artifacts in build directory
-set_target_properties(auth_grpc_proto PROPERTIES
+set_target_properties(aerospike_proxy PROPERTIES
         ARCHIVE_OUTPUT_DIRECTORY "build"
         )
 
-#[[
-# Main sources
-include_directories("src/main")
-include_directories("src/include")
-file(GLOB all_sources
-        "src/include/*.h"
-        "src/main/*.c"
-        )
-
-add_executable(MyTarget ${all_SRCS})]]
+set(target "main")
+add_executable(${target} "src/main/aerospike/${target}.cc")
+target_link_libraries(${target}
+        aerospike_proxy
+        "/home/ashish/workspace/aerospike-client-c/target/Linux-x86_64/lib/libaerospike.a"
+        absl::flags
+        absl::flags_parse
+        ${_REFLECTION}
+        ${_GRPC_GRPCPP}
+        ${_PROTOBUF_LIBPROTOBUF})

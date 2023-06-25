@@ -177,6 +177,17 @@ typedef struct aerospike_s {
 	as_config config;
 
 	/**
+	 * Indicates if this is a proxy cluster.
+	 */
+	bool is_proxy;
+
+	/**
+	 * @private
+	 * Cluster state.
+	 */
+	void* proxy_cluster;
+
+	/**
 	* @private
 	* If true, then aerospike_destroy() will free this instance.
 	*/
